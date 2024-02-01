@@ -3,15 +3,25 @@
 version: '3.8'
 
 services:
-  db:
+  db_dev:
     image: mysql:latest
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ninoDB
+      MYSQL_DATABASE: ninoDB_dev
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
-      - db-data:/var/lib/mysql
+      - db-dev-data:/var/lib/mysql
+
+  db_prod:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ninoDB_prod
+    ports:
+      - "3308:3306"
+    volumes:
+      - db-prod-data:/var/lib/mysql
 
   backend:
     build: ./backend
@@ -20,9 +30,9 @@ services:
     volumes:
       - ./backend:/usr/src/app
     depends_on:
-      - db
+      - db_dev
     env_file:
-      - ../.env
+      - ./.env
 
   frontend:
     build: ./frontend
@@ -32,5 +42,5 @@ services:
       - backend
 
 volumes:
-  db-data:
-
+  db-dev-data:
+  db-prod-data:

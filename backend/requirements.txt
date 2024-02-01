@@ -4,3 +4,4 @@ Flask-Bcrypt
 Flask-Migrate
 mysqlclient
 bcrypt
+pymysql

@@ -1,5 +1,8 @@
 # Use an official Python 3.12.1 runtime as a base image
-FROM python:3.12.1-slim
+FROM python:3.12.1
+
+# Install system dependencies for mysqlclient
+RUN apt-get update && apt-get install -y default-libmysqlclient-dev gcc
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
@@ -19,3 +22,4 @@ ENV NAME World
 
 # Run app.py when the container launches
 CMD ["python3", "merch.py"]
+
