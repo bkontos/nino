@@ -1,18 +1,17 @@
-# Docker Compose file
-
+# Docker Compose Production file
 
 version: '3.8'
 
 services:
-  db_dev:
+  db_prod:
     image: mysql:latest
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ninoDB_dev
+      MYSQL_DATABASE: ninoDB_prod
     ports:
-      - "3307:3306"
+      - "3308:3306"
     volumes:
-      - db-dev-data:/var/lib/mysql
+      - db-prod-data:/var/lib/mysql
 
   backend:
     build: ./backend
@@ -21,17 +20,17 @@ services:
     volumes:
       - ./backend:/usr/src/app
     depends_on:
-      - db_dev
+      - db_prod
     env_file:
-      - ./.env
+      - ./.env.prod
 
   frontend:
     build: ./frontend
     ports:
-      - "3000:3000"
+      - "80:80"  # In production, you might serve on standard HTTP/HTTPS ports
     depends_on:
       - backend
 
 volumes:
-  db-dev-data:
+  db-prod-data:
 
