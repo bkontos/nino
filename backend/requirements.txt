@@ -1,7 +1,6 @@
 Flask
 Flask-SQLAlchemy
-Flask-Bcrypt
 Flask-Migrate
 mysqlclient
-bcrypt
 pymysql
+cryptography
