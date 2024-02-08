@@ -91,7 +91,14 @@ def update_item(item_id):
 
 @app.route('/inventory/<int:item_id>', methods=['DELETE'])
 def delete_item(item_id):
-    # Logic for deleting an item
+    item = InventoryItem.query.get(item_id)
+
+    if item is None:
+        return jsonify({'error': 'Item not found'})
+
+    db.session.delete(item)
+    db.session.commit()
+
     return jsonify({'message': 'Item deleted successfully'})
 
 @app.route('/inventory', methods=['GET'])
