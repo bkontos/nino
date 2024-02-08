@@ -1,4 +1,3 @@
-
 from flask import Flask, jsonify, request, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -54,8 +53,41 @@ def add_item():
 
 @app.route('/inventory/<int:item_id>', methods=['PUT'])
 def update_item(item_id):
-    # Logic for updating an item
-    return jsonify({'message': 'Item updated successfully'})
+    item = InventoryItem.query.get(item_id)
+
+    if item is None:
+        return jsonify({'error': 'Item not found'}), 404
+
+    if not request.json:
+        return jsonify({'error': 'Request must be in JSON'}), 400
+    
+    data = request.json
+    description = data.get('description')
+    size = data.get('size')
+    price = data.get('price')
+    count_in = data.get('count_in')
+    count_out = data.get('count_out')
+    comps = data.get('comps')
+    item_type = data.get('item_type')
+
+    if description:
+        item.description = description
+    if size:
+        item.size = size
+    if price is not None:
+        item.price = price
+    if count_in is not None:
+        item.count_in = count_in
+    if count_out is not None:
+        item.count_out = count_out
+    if comps is not None:
+        item.comps = comps
+    if item_type:
+        item.item_type = item_type
+
+    db.sessions.commit()
+
+    return jsonify({'message': 'Item updated successfully'}), 200
 
 @app.route('/inventory/<int:item_id>', methods=['DELETE'])
 def delete_item(item_id):
