@@ -27,6 +27,7 @@ class InventoryItem(db.Model):
     comps = db.Column(db.Integer)
     item_type = db.Column(db.String(50))
 
+
 @app.route('/inventory', methods=['POST'])
 def add_item():
     if not request.json:
@@ -103,8 +104,18 @@ def delete_item(item_id):
 
 @app.route('/inventory', methods=['GET'])
 def get_inventory():
-    # Logic for getting the user's inventory
-    return jsonify({'inventory': []})
+    items = InventoryItem.query.all()
+    
+    items_list = [{
+                  'id': item.id,
+                  'description': item.description,
+                  'size': item.size,
+                  'count_in': item.count_in,
+                  'count_out': item.count_out,
+                  'comps': item.comps,
+                  'item_type': item.item_type
+    } for item in items]
+    return jsonify({'inventory': items_list})
 
 @app.route('/calculate', methods=['POST'])
 def calculate_summary():
