@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from calculations import get_gross_per_item, get_total_gross
 import os
 
 app = Flask(__name__)
@@ -110,6 +111,7 @@ def get_inventory():
                   'id': item.id,
                   'description': item.description,
                   'size': item.size,
+                  'price': item.price,
                   'count_in': item.count_in,
                   'count_out': item.count_out,
                   'comps': item.comps,
@@ -119,8 +121,25 @@ def get_inventory():
 
 @app.route('/calculate', methods=['POST'])
 def calculate_summary():
-    # Logic for calculating financial summaries
-    return jsonify({'summary': {}})
+    items = InventoryItem.query.all()
+
+    # Calculating total gross without creating an intermediate dictionary
+    total_gross = get_total_gross(items)
+    
+    # For soft and hard gross, filter items by type first
+    soft_items = [item for item in items if item.item_type.lower() == 'soft']
+    hard_items = [item for item in items if item.item_type.lower() == 'hard']
+    
+    soft_gross = get_total_gross(soft_items)
+    hard_gross = get_total_gross(hard_items)
+
+
+    return jsonify({
+                   'total_gross': total_gross,
+                   'soft_gross': soft_gross,
+                   'hard_gross': hard_gross
+                   # Add more calculation retrievals here
+                   })
 
 if __name__ == '__main__':
     app.run(debug=os.environ.get('FLASK_DEBUG', 'False') == 'True', host='0.0.0.0')
