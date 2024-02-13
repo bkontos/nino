@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from calculations import get_gross_per_item, get_total_gross
+from calculations import calculate_item_gross, calculate_gross, calculate_net, calculate_total_owed, calculate_band_revenue, calculate_house_due
 import os
 
 app = Flask(__name__)
@@ -13,13 +13,15 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db, directory= 'db/migrations')
 
 class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'users'
+    user_id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     auth0_id = db.Column(db.String(255), unique=True, nullable=False)  # New field for Auth0 user ID
 
 class InventoryItem(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'items'
+    item_id = db.Column(db.Integer, primary_key=True)
     description = db.Column(db.String(255), nullable=False)
     size = db.Column(db.String(50))
     price = db.Column(db.Float)
@@ -28,6 +30,32 @@ class InventoryItem(db.Model):
     comps = db.Column(db.Integer)
     item_type = db.Column(db.String(50))
 
+class Configuration(db.Model):
+    __tablename__ = 'configuration'
+    configuration_id = db.Column(db.Integer, primary_key=True)
+    tax_rate = db.Column(db.Float, nullable=False)
+    hard_cut = db.Column(db.Float, nullable=False)
+    soft_cut = db.Column(db.Float, nullable=False)
+    added_fees = db.Column(db.Float)
+
+class SalesSummary(db.Model):
+    __tablename__ = 'sales_summary'
+    summary_id = db.Column(db.Integer, primary_key=True)
+    total_gross = db.Column(db.Float)
+    total_soft_gross = db.Column(db.Float)
+    total_hard_gross = db.Column(db.Float)
+    total_soft_owed_casino = db.Column(db.Float)
+    total_hard_owed_casino = db.Column(db.Float)
+    total_owed_casino = db.Column(db.Float)
+    band_revenue_received = db.Column(db.Float)
+
+class CreditCardInfo(db.Model):
+    __tablename__ = 'credit_card_info'
+    cc_info_id = db.Column(db.Integer, primary_key=True)
+    sales_summary_id = db.Column(db.Integer, db.ForeignKey('sales_summary.summary_id'))
+    cc_fee = db.Column(db.Float, nullable=False)
+    cc_percentage = db.Column(db.Float)
+    cc_sales = db.Column(db.Float)
 
 @app.route('/inventory', methods=['POST'])
 def add_item():
@@ -119,27 +147,50 @@ def get_inventory():
     } for item in items]
     return jsonify({'inventory': items_list})
 
-@app.route('/calculate', methods=['POST'])
+@app.route('/calculate', methods=['GET'])
 def calculate_summary():
+    config = Configuration.query.first()
+
     items = InventoryItem.query.all()
-
-    # Calculating total gross without creating an intermediate dictionary
-    total_gross = get_total_gross(items)
+    items_data = [
+        {
+            'description': item.description,
+            'price': item.price,
+            'count_in': item.count_in,
+            'count_out': item.count_out,
+            'comps': item.comps,
+            'item_type': item.item_type
+        } for item in items
+    ]
     
-    # For soft and hard gross, filter items by type first
-    soft_items = [item for item in items if item.item_type.lower() == 'soft']
-    hard_items = [item for item in items if item.item_type.lower() == 'hard']
+    # Example values for tax rate and credit card fee
+    tax_rate = config.tax_rate
+    soft_cut = config.soft_cut
+    hard_cut = config.hard_cut
+    added_fees = config.added_fees
+    credit_card_fee = 100
+
+    total_gross = calculate_gross(items_data)
+    soft_gross = calculate_gross(items_data, 'Soft')
+    hard_gross = calculate_gross(items_data, 'Hard')
+    soft_net = calculate_net(soft_gross, tax_rate, credit_card_fee)
+    hard_net = calculate_net(hard_gross, tax_rate, credit_card_fee)
+    soft_owed = calculate_total_owed(soft_net, soft_cut)
+    hard_owed = calculate_total_owed(hard_net, hard_cut)
+    total_house_due = calculate_house_due(soft_owed, hard_owed, added_fees)
+    band_revenue = calculate_band_revenue(total_gross, tax_rate, total_house_due)
     
-    soft_gross = get_total_gross(soft_items)
-    hard_gross = get_total_gross(hard_items)
-
-
     return jsonify({
-                   'total_gross': total_gross,
-                   'soft_gross': soft_gross,
-                   'hard_gross': hard_gross
-                   # Add more calculation retrievals here
-                   })
+        'total_gross': total_gross,
+        'soft_gross': soft_gross,
+        'hard_gross': hard_gross,
+        'soft_net': soft_net,
+        'hard_net': hard_net,
+        'soft_owed': soft_owed,
+        'hard_owed': hard_owed,
+        'total_house_due': total_house_due,
+        'band_revenue': band_revenue
+    }), 200
 
 if __name__ == '__main__':
     app.run(debug=os.environ.get('FLASK_DEBUG', 'False') == 'True', host='0.0.0.0')
