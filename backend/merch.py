@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from calculations import calculate_item_gross, calculate_gross, calculate_net, calculate_total_owed, calculate_band_revenue, calculate_house_due
+from calculations import calculate_gross, calculate_net, calculate_total_owed, calculate_artist_revenue, calculate_house_due
 import os
 
 app = Flask(__name__)
@@ -42,12 +42,12 @@ class SalesSummary(db.Model):
     __tablename__ = 'sales_summary'
     summary_id = db.Column(db.Integer, primary_key=True)
     total_gross = db.Column(db.Float)
-    total_soft_gross = db.Column(db.Float)
-    total_hard_gross = db.Column(db.Float)
-    total_soft_owed_casino = db.Column(db.Float)
-    total_hard_owed_casino = db.Column(db.Float)
-    total_owed_casino = db.Column(db.Float)
-    band_revenue_received = db.Column(db.Float)
+    soft_gross = db.Column(db.Float)
+    hard_gross = db.Column(db.Float)
+    soft_owed_casino = db.Column(db.Float)
+    hard_owed = db.Column(db.Float)
+    house_due = db.Column(db.Float)
+    artist_revenue = db.Column(db.Float)
 
 class CreditCardInfo(db.Model):
     __tablename__ = 'credit_card_info'
@@ -79,7 +79,8 @@ def add_item():
     db.session.add(new_item)
     db.session.commit()
 
-    return jsonify({'message': 'Item added successfully'}), 201
+    return jsonify({'message': 'Item added successfully', 'item id': new_item.item_id, 'description': new_item.description, 'size': new_item.size, 'price': new_item.price, 'count in': new_item.count_in, 'count out': new_item.count_out, 'comps': new_item.comps, 'item type': new_item.item_type}), 201
+    # GET RID OF ITEM ID DISPLAY AFTER DEVELOPMENT IS DONE
 
 @app.route('/inventory/<int:item_id>', methods=['PUT'])
 def update_item(item_id):
@@ -115,9 +116,9 @@ def update_item(item_id):
     if item_type:
         item.item_type = item_type
 
-    db.sessions.commit()
+    db.session.commit()
 
-    return jsonify({'message': 'Item updated successfully'}), 200
+    return jsonify({'message': 'Item updated successfully', 'item id': item.item_id, 'description': item.description}), 200
 
 @app.route('/inventory/<int:item_id>', methods=['DELETE'])
 def delete_item(item_id):
@@ -136,7 +137,7 @@ def get_inventory():
     items = InventoryItem.query.all()
     
     items_list = [{
-                  'id': item.id,
+                  'id': item.item_id,
                   'description': item.description,
                   'size': item.size,
                   'price': item.price,
@@ -147,9 +148,55 @@ def get_inventory():
     } for item in items]
     return jsonify({'inventory': items_list})
 
+
+@app.route('/credit-card-info', methods=['POST'])
+def add_credit_card_info():
+    if not request.json:
+        abort(400, "Request must be in JSON")
+
+    # Only cc_fee is required; cc_percentage and cc_sales are optional
+    if 'cc_fee' not in request.json:
+        abort(400, "Missing required field: cc_fee")
+
+    new_cc_info = CreditCardInfo(
+        sales_summary_id=request.json.get('sales_summary_id'),  # Assuming this is also optional or handled differently
+        cc_fee=request.json['cc_fee'],
+        cc_percentage=request.json.get('cc_percentage', None),  # Default to None if not provided
+        cc_sales=request.json.get('cc_sales', None)  # Default to None if not provided
+    )
+    
+    db.session.add(new_cc_info)
+    db.session.commit()
+
+    return jsonify({'message': 'Credit card info added successfully', 'cc_info_id': new_cc_info.cc_info_id}), 201
+
+
+@app.route('/credit-card-info/<int:cc_info_id>', methods=['PUT'])
+def update_credit_card_info(cc_info_id):
+    cc_info = CreditCardInfo.query.get(cc_info_id)
+    if cc_info is None:
+        return jsonify({'error': 'Credit card info not found'}), 404
+
+    if not request.json:
+        return jsonify({'error': 'Request must be in JSON'}), 400
+
+    if 'cc_fee' in request.json:
+        cc_info.cc_fee = request.json['cc_fee']
+
+    # Only update cc_percentage and cc_sales if they are explicitly provided
+    if 'cc_percentage' in request.json:
+        cc_info.cc_percentage = request.json['cc_percentage']
+    if 'cc_sales' in request.json:
+        cc_info.cc_sales = request.json['cc_sales']
+
+    db.session.commit()
+
+    return jsonify({'message': 'Credit card info updated successfully'}), 200
+
 @app.route('/calculate', methods=['GET'])
 def calculate_summary():
-    config = Configuration.query.first()
+    #config = Configuration.query.first()
+    #cc_info = CreditCardInfo.query.first()
 
     items = InventoryItem.query.all()
     items_data = [
@@ -164,11 +211,16 @@ def calculate_summary():
     ]
     
     # Example values for tax rate and credit card fee
-    tax_rate = config.tax_rate
-    soft_cut = config.soft_cut
-    hard_cut = config.hard_cut
-    added_fees = config.added_fees
-    credit_card_fee = 100
+    #tax_rate = config.tax_rate
+    #soft_cut = config.soft_cut
+    #hard_cut = config.hard_cut
+    #added_fees = config.added_fees
+    #credit_card_fee = cc_info.cc_fee if cc_info else 0
+    tax_rate = 6.3
+    soft_cut = 20
+    hard_cut = 10
+    added_fees = 0
+    credit_card_fee = 0
 
     total_gross = calculate_gross(items_data)
     soft_gross = calculate_gross(items_data, 'Soft')
@@ -178,7 +230,7 @@ def calculate_summary():
     soft_owed = calculate_total_owed(soft_net, soft_cut)
     hard_owed = calculate_total_owed(hard_net, hard_cut)
     total_house_due = calculate_house_due(soft_owed, hard_owed, added_fees)
-    band_revenue = calculate_band_revenue(total_gross, tax_rate, total_house_due)
+    artist_revenue = calculate_artist_revenue(total_gross, tax_rate, total_house_due)
     
     return jsonify({
         'total_gross': total_gross,
@@ -188,8 +240,8 @@ def calculate_summary():
         'hard_net': hard_net,
         'soft_owed': soft_owed,
         'hard_owed': hard_owed,
-        'total_house_due': total_house_due,
-        'band_revenue': band_revenue
+        'house_due': total_house_due,
+        'artist_revenue': artist_revenue
     }), 200
 
 if __name__ == '__main__':

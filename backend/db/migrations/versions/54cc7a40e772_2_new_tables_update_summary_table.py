@@ -40,12 +40,12 @@ def upgrade():
     op.create_table('sales_summary',
     sa.Column('summary_id', sa.Integer(), nullable=False),
     sa.Column('total_gross', sa.Float(), nullable=True),
-    sa.Column('total_soft_gross', sa.Float(), nullable=True),
-    sa.Column('total_hard_gross', sa.Float(), nullable=True),
-    sa.Column('total_soft_owed_casino', sa.Float(), nullable=True),
-    sa.Column('total_hard_owed_casino', sa.Float(), nullable=True),
-    sa.Column('total_owed_casino', sa.Float(), nullable=True),
-    sa.Column('band_revenue_received', sa.Float(), nullable=True),
+    sa.Column('soft_gross', sa.Float(), nullable=True),
+    sa.Column('hard_gross', sa.Float(), nullable=True),
+    sa.Column('soft_owed', sa.Float(), nullable=True),
+    sa.Column('hard_owed', sa.Float(), nullable=True),
+    sa.Column('house_due', sa.Float(), nullable=True),
+    sa.Column('artist_revenue', sa.Float(), nullable=True),
     sa.PrimaryKeyConstraint('summary_id')
     )
     op.create_table('users',

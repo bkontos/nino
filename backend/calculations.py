@@ -18,9 +18,9 @@ def calculate_total_owed(net, cut_percentage):
     total_owed = net * (cut_percentage / 100)
     return total_owed
 
-def calculate_band_revenue(gross, tax_rate, total_owed):
-    band_revenue = gross / (1 + tax_rate / 100) - total_owed
-    return band_revenue
+def calculate_artist_revenue(gross, tax_rate, total_owed):
+    artist_revenue = gross / (1 + tax_rate / 100) - total_owed
+    return artist_revenue
 
 def calculate_house_due(soft_total_owed, hard_total_owed, fee):
     house_due = soft_total_owed + hard_total_owed + fee

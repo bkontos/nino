@@ -1,3 +1,8 @@
 .env
 .env.prod
 test_add_time.sh
+test_update_item.sh
+test_delete_item.sh
+test_get_inventory.sh
+test_calculate_summary.sh
+
