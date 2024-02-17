@@ -57,6 +57,7 @@ class CreditCardInfo(db.Model):
     cc_percentage = db.Column(db.Float)
     cc_sales = db.Column(db.Float)
 
+
 @app.route('/inventory', methods=['POST'])
 def add_item():
     if not request.json:
@@ -81,6 +82,7 @@ def add_item():
 
     return jsonify({'message': 'Item added successfully', 'item id': new_item.item_id, 'description': new_item.description, 'size': new_item.size, 'price': new_item.price, 'count in': new_item.count_in, 'count out': new_item.count_out, 'comps': new_item.comps, 'item type': new_item.item_type}), 201
     # GET RID OF ITEM ID DISPLAY AFTER DEVELOPMENT IS DONE
+
 
 @app.route('/inventory/<int:item_id>', methods=['PUT'])
 def update_item(item_id):
@@ -120,6 +122,7 @@ def update_item(item_id):
 
     return jsonify({'message': 'Item updated successfully', 'item id': item.item_id, 'description': item.description}), 200
 
+
 @app.route('/inventory/<int:item_id>', methods=['DELETE'])
 def delete_item(item_id):
     item = InventoryItem.query.get(item_id)
@@ -131,6 +134,62 @@ def delete_item(item_id):
     db.session.commit()
 
     return jsonify({'message': 'Item deleted successfully'})
+
+
+@app.route('/inventory/delete_all', methods=['DELETE'])
+def delete_all():
+    try:
+        # Delete all items from the InventoryItem table
+        num_deleted = InventoryItem.query.delete()
+        db.session.commit()
+        return jsonify({'message': f'Successfully deleted {num_deleted} items'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete items', 'details': str(e)}), 500
+
+
+@app.route('/inventory/save_all', methods=['POST'])
+def save_all():
+    items_data = request.json.get('items', [])
+    new_items = []
+    updated_items = 0
+
+    for item_data in items_data:
+        item_id = item_data.get('item_id')
+        if item_id:
+            # Update existing item
+            item = InventoryItem.query.get(item_id)
+            if item:
+                item.description = item_data.get('description', item.description)
+                item.size = item_data.get('size', item.size)
+                item.price = item_data.get('price', item.price)
+                item.count_in = item_data.get('count_in', item.count_in)
+                item.count_out = item_data.get('count_out', item.count_out)
+                item.comps = item_data.get('count_out', item.comps)
+                item.item_type = item_data.get('item_type', item.item_type)
+                updated_items += 1
+        else:
+            # Create new item
+            new_item = InventoryItem(
+                description=item_data.get('description'),
+                size=item_data.get('size'),
+                price=item_data.get('price'),
+                count_in=item_data.get('count_in'),
+                count_out=item_data.get('count_out'),
+                comps=item_data.get('comps'),
+                item_type=item_data.get('item_type')
+            )
+            new_items.append(new_item)
+    
+    db.session.add_all(new_items)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Items saved successfully',
+        'new_items_added': len(new_items),
+        'items_updated': updated_items
+    }), 200
+
 
 @app.route('/inventory', methods=['GET'])
 def get_inventory():
@@ -193,6 +252,7 @@ def update_credit_card_info(cc_info_id):
 
     return jsonify({'message': 'Credit card info updated successfully'}), 200
 
+
 @app.route('/calculate', methods=['GET'])
 def calculate_summary():
     #config = Configuration.query.first()
@@ -243,6 +303,7 @@ def calculate_summary():
         'house_due': total_house_due,
         'artist_revenue': artist_revenue
     }), 200
+
 
 if __name__ == '__main__':
     app.run(debug=os.environ.get('FLASK_DEBUG', 'False') == 'True', host='0.0.0.0')
