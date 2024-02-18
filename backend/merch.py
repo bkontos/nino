@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from calculations import calculate_gross, calculate_net, calculate_total_owed, calculate_artist_revenue, calculate_house_due
 import os
+from auth import requires_auth, AuthError
 
 app = Flask(__name__)
 
@@ -22,6 +23,7 @@ class User(db.Model):
 class InventoryItem(db.Model):
     __tablename__ = 'items'
     item_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     description = db.Column(db.String(255), nullable=False)
     size = db.Column(db.String(50))
     price = db.Column(db.Float)
@@ -33,6 +35,7 @@ class InventoryItem(db.Model):
 class Configuration(db.Model):
     __tablename__ = 'configuration'
     configuration_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)   
     tax_rate = db.Column(db.Float, nullable=False)
     hard_cut = db.Column(db.Float, nullable=False)
     soft_cut = db.Column(db.Float, nullable=False)
@@ -41,6 +44,7 @@ class Configuration(db.Model):
 class SalesSummary(db.Model):
     __tablename__ = 'sales_summary'
     summary_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     total_gross = db.Column(db.Float)
     soft_gross = db.Column(db.Float)
     hard_gross = db.Column(db.Float)
@@ -52,6 +56,7 @@ class SalesSummary(db.Model):
 class CreditCardInfo(db.Model):
     __tablename__ = 'credit_card_info'
     cc_info_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     sales_summary_id = db.Column(db.Integer, db.ForeignKey('sales_summary.summary_id'))
     cc_fee = db.Column(db.Float, nullable=False)
     cc_percentage = db.Column(db.Float)
@@ -59,6 +64,7 @@ class CreditCardInfo(db.Model):
 
 
 @app.route('/inventory', methods=['POST'])
+@requires_auth
 def add_item():
     if not request.json:
         abort(400, description="Request must be in JSON")
@@ -67,7 +73,16 @@ def add_item():
     if not all(field in request.json for field in required_fields):
         abort(400, description=f"Missing fields in request data. Required fields are: {', '.join(required_fields)}")
 
+    user_id = _request_ctx_stack.top.current_user['sub']
+
+    # Find the corresponding user in your database
+    user = User.query.filter_by(auth0_id=user_id).first()
+    if not user:
+        # Optionally create a new user if not found (or handle differently)
+        abort(404, description="User not found")
+
     new_item = InventoryItem(
+        user_id=user.user_id,
         description = request.json['description'],
         size = request.json['size'],
         price = request.json['price'],
@@ -85,8 +100,16 @@ def add_item():
 
 
 @app.route('/inventory/<int:item_id>', methods=['PUT'])
+@requires_auth
 def update_item(item_id):
-    item = InventoryItem.query.get(item_id)
+    user_id = _request_ctx_stack.top.current_user['sub']
+    user = User.query.filter_by(auth0_id=user_id).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    item = InventoryItem.query.filter_by(item_id=item_id, user_id=user.user_id).first()
+    if not item:
+        return jsonify({'error': 'Item not found or you do not have permission to access this item'}), 404
 
     if item is None:
         return jsonify({'error': 'Item not found'}), 404
@@ -124,6 +147,7 @@ def update_item(item_id):
 
 
 @app.route('/inventory/<int:item_id>', methods=['DELETE'])
+@requires_auth
 def delete_item(item_id):
     item = InventoryItem.query.get(item_id)
 
@@ -137,9 +161,9 @@ def delete_item(item_id):
 
 
 @app.route('/inventory/delete_all', methods=['DELETE'])
+@requires_auth
 def delete_all():
     try:
-        # Delete all items from the InventoryItem table
         num_deleted = InventoryItem.query.delete()
         db.session.commit()
         return jsonify({'message': f'Successfully deleted {num_deleted} items'}), 200
@@ -149,6 +173,7 @@ def delete_all():
 
 
 @app.route('/inventory/save_all', methods=['POST'])
+@requires_auth
 def save_all():
     items_data = request.json.get('items', [])
     new_items = []
@@ -192,8 +217,14 @@ def save_all():
 
 
 @app.route('/inventory', methods=['GET'])
+@requires_auth
 def get_inventory():
-    items = InventoryItem.query.all()
+    user_id = _request_ctx_stack.top.current_user['sub']
+    user = User.query.filter_by(auth0_id=user_id).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    items = InventoryItem.query.filter_by(user_id=user.user_id).all()
     
     items_list = [{
                   'id': item.item_id,
@@ -209,6 +240,7 @@ def get_inventory():
 
 
 @app.route('/credit-card-info', methods=['POST'])
+@requires_auth
 def add_credit_card_info():
     if not request.json:
         abort(400, "Request must be in JSON")
@@ -231,6 +263,7 @@ def add_credit_card_info():
 
 
 @app.route('/credit-card-info/<int:cc_info_id>', methods=['PUT'])
+@requires_auth
 def update_credit_card_info(cc_info_id):
     cc_info = CreditCardInfo.query.get(cc_info_id)
     if cc_info is None:
@@ -254,6 +287,7 @@ def update_credit_card_info(cc_info_id):
 
 
 @app.route('/calculate', methods=['GET'])
+@requires_auth
 def calculate_summary():
     #config = Configuration.query.first()
     #cc_info = CreditCardInfo.query.first()

@@ -4,3 +4,6 @@ Flask-Migrate
 mysqlclient
 pymysql
 cryptography
+python-dotenv
+python-jose  # or pyjwt, depending on your preference for JWT handling
+
