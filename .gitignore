@@ -7,4 +7,11 @@ test_delete_all.sh
 test_save_all.sh
 test_get_inventory.sh
 test_calculate_summary.sh
+test_add_sales_summary.sh
+test_update_sales_summary.sh
+test_add_configuration.sh
+test_update_configuration.sh
+test_add_credit_card_info.sh
+test_update_credit_card_info.sh
+getToken.sh
 

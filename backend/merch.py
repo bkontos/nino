@@ -430,7 +430,6 @@ def add_sales_summary():
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
-    # Assuming you send calculated data as JSON in the request body
     if not request.json:
         return jsonify({'error': 'Request must be in JSON format'}), 400
 

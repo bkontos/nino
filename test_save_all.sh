@@ -2,6 +2,8 @@
 
 URL="http://localhost:5000/inventory/save_all"
 
+read -p "Enter access token " TOKEN
+
 read -r -d '' PAYLOAD <<EOF
 {
   "items": [
@@ -31,4 +33,5 @@ EOF
 # Make a POST request to the Flask application
 curl -X POST $URL \
      -H "Content-Type: application/json" \
+     -H "Authorization: Bearer $TOKEN" \
      -d "$PAYLOAD"

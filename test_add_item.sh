@@ -14,7 +14,10 @@ PAYLOAD='{
   "item_type": "Soft"
 }'
 
+read -p "Enter the access token: " TOKEN
+
 # Send POST request to the Flask application
 curl -X POST $URL \
      -H "Content-Type: application/json" \
+     -H "Authorization: Bearer $TOKEN" \
      -d "$PAYLOAD"
