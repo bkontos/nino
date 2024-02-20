@@ -1,6 +1,6 @@
 # Authorization configuration file
 from jose import jwt
-from flask import request, _request_ctx_stack, jsonify, abort
+from flask import request, g, abort
 from functools import wraps
 import json
 from urllib.request import urlopen
@@ -74,7 +74,7 @@ def requires_auth(f):
         try:
             token = get_token_auth_header()
             payload = verify_decode_jwt(token)
-            _request_ctx_stack.top.current_user = payload  # Add the decoded payload to the context
+            g.current_user = payload  # Add the decoded payload to the context
         except Exception as e:
             abort(401, description=str(e))
         return f(*args, **kwargs)
