@@ -48,7 +48,7 @@ class SalesSummary(db.Model):
     total_gross = db.Column(db.Float, nullable=False)
     soft_gross = db.Column(db.Float, nullable=False)
     hard_gross = db.Column(db.Float, nullable=False)
-    soft_owed_casino = db.Column(db.Float, nullable=False)
+    soft_owed = db.Column(db.Float, nullable=False)
     hard_owed = db.Column(db.Float, nullable=False)
     house_due = db.Column(db.Float, nullable=False)
     artist_revenue = db.Column(db.Float, nullable=False)
@@ -249,7 +249,7 @@ def get_inventory():
     return jsonify({'inventory': items_list})
 
 
-@app.route('/credit-card-info', methods=['POST'])
+@app.route('/credit_card_info', methods=['POST'])
 @requires_auth
 def add_credit_card_info():
     user_id = g.current_user['sub']
@@ -275,7 +275,7 @@ def add_credit_card_info():
     return jsonify({'message': 'Credit card info added successfully', 'cc_info_id': new_cc_info.cc_info_id}), 201
 
 
-@app.route('/credit-card-info/<int:cc_info_id>', methods=['PUT'])
+@app.route('/credit_card_info/<int:cc_info_id>', methods=['PUT'])
 @requires_auth
 def update_credit_card_info(cc_info_id):
     user_id = g.current_user['sub']
@@ -314,13 +314,18 @@ def add_configuration():
         return jsonify({'error': 'User not found'}), 404
     if not request.json:
         abort(400, "Request must be in JSON")
+    if 'tax_rate' not in request.json:
+        abort(400, "Missing required field: tax_rate")
+    if 'hard_cut' not in request.json:
+        abort(400, "Missing required field: hard_cut")
+    if 'soft_cut' not in request.json:
+        abort(400, "Missing required field: soft_cut")
 
-    required_fields = ['tax_rate','hard_cut','soft_cut']
-    if not all(field in request.json for field in required_fields):
-        abort(400, description=f"Missing fields in request data. Required fields are: {', '.join(required_fields)}")
+
 
 
     new_config = Configuration(
+        user_id = user.user_id,
         tax_rate = request.json['tax_rate'],
         hard_cut = request.json['hard_cut'],
         soft_cut = request.json['soft_cut'],
