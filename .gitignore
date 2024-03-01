@@ -1,5 +1,7 @@
 .env
 .env.prod
+compose.yaml
+compose.prod.yaml
 test_add_time.sh
 test_update_item.sh
 test_delete_item.sh

@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, g, request, abort
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from calculations import calculate_gross, calculate_net, calculate_total_owed, calculate_artist_revenue, calculate_house_due
@@ -6,6 +7,7 @@ import os
 from auth import requires_auth
 
 app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": "https://localhost:3000"}})
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

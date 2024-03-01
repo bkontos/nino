@@ -1,26 +1,30 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import Auth0ProviderWithNavigate from './auth/auth0-provider-with-navigate';
+import ProtectedRoute from './auth/protected-route';
+import Dashboard from './components/Dashboard';
+import { useAuth0 } from '@auth0/auth0-react';
 
-function App() {
+const App: React.FC = () => {
+  const { isAuthenticated, loginWithRedirect, isLoading } = useAuth0();
+
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading) {
+      loginWithRedirect();
+    }
+  }, [isAuthenticated, isLoading, loginWithRedirect]);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <Auth0ProviderWithNavigate>
+        <Routes>
+          <Route path="/" element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Route>
+        </Routes>
+      </Auth0ProviderWithNavigate>
+    </Router>
   );
-}
+};
 
 export default App;

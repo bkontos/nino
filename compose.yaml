@@ -24,6 +24,8 @@ services:
       - db_dev
     env_file:
       - ./.env
+    networks:
+      - nino-network
 
   frontend:
     build: ./frontend
@@ -31,7 +33,17 @@ services:
       - "3000:80"
     depends_on:
       - backend
+    networks:
+      - nino-network
+    environment:
+      - REACT_APP_BACKEND_URL=http://backend:5000
+      - REACT_APP_AUTH0_DOMAIN=dev-o1xeu62jffl0qj1r.us.auth0.com
+      - REACT_APP_AUTH0_CLIENT_ID=fAxuXOSMwuxOl8Z2vhGtd5fLV94Y5Cep
+      - REACT_APP_API_AUDIENCE=https://merchandisemanagement.nino.com
+
 
 volumes:
   db-dev-data:
 
+networks:
+  nino-network:
