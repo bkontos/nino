@@ -1,29 +1,23 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Auth0ProviderWithNavigate from './auth/auth0-provider-with-navigate';
-import ProtectedRoute from './auth/protected-route';
-import Dashboard from './components/Dashboard';
+// src/App.tsx
+import React from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
+import LoginButton from './components/LoginButton';
+import LogoutButton from './components/LogoutButton';
 
 const App: React.FC = () => {
-  const { isAuthenticated, loginWithRedirect, isLoading } = useAuth0();
-
-  useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      loginWithRedirect();
-    }
-  }, [isAuthenticated, isLoading, loginWithRedirect]);
+  const { isAuthenticated, user } = useAuth0();
 
   return (
-    <Router>
-      <Auth0ProviderWithNavigate>
-        <Routes>
-          <Route path="/" element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-          </Route>
-        </Routes>
-      </Auth0ProviderWithNavigate>
-    </Router>
+    <div>
+      {isAuthenticated ? (
+        <>
+          <p>Welcome, {user?.name}!</p>
+          <LogoutButton />
+        </>
+      ) : (
+        <LoginButton />
+      )}
+    </div>
   );
 };
 
